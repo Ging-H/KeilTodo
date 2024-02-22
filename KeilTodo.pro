@@ -30,6 +30,9 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp
 
+OTHER_FILES += \
+        readme.assets/* \
+        readme.md
 
 FORMS +=
 

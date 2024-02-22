@@ -2,12 +2,13 @@
 #include <QCommandLineParser>
 #include <QtXml>
 #include <QTextCodec>
+
 QString defKey = "@warning|@todo|@fixme|@fixed|@info|@bug";
 
 /**
   * 函数功能: 将文本数据转换成unicode
   * 输入参数: [data] text data
-  * 返 回 值: [QString]
+  * 返 回 值: data的unicode字符串
   * 说    明:
   */
 QString unicodeText( QByteArray &data)
@@ -34,7 +35,7 @@ QString unicodeText( QByteArray &data)
 /**
   * 函数功能: 从uVison project file 获取文件列表
   * 输入参数: [projectPath] *.uvprojx
-  * 返 回 值: [QStringList]
+  * 返 回 值: Keil-MDK的里面包含的所有源文件列表
   * 说    明:
   */
 QStringList getFileList(QString &projectPath)
@@ -121,13 +122,13 @@ QStringList scanFile(QString &path, QString &key)
 
         while( !file->atEnd() ) {
             QByteArray data = file->readLine();
-            QString txt = unicodeText(data);
+            QString txt = unicodeText(data); // GB2312, UTF-8 to unicode
             linenum++;
             QRegExp reg(key);
             reg.setCaseSensitivity( Qt::CaseInsensitive );
 
             if( reg.indexIn(txt, 0) != -1 ) {
-                QString type = reg.cap(0).mid(1);
+                QString type = reg.cap(0).mid(1); // remove the first '@'
                 QString location = path + "(" + QString::number(linenum) + ")";
                 QString log("%1: [%2] %3");
                 msgLst << log.arg( location, type, txt );
@@ -155,16 +156,16 @@ int main(int argc, char *argv[])
     a.setApplicationName("KeilTodo");
     QCommandLineParser cmdParser;
     // 定义实例
-    cmdParser.setApplicationDescription( "list key word from keil project or source file"); // 描述可执行程序的属性
-    cmdParser.addHelpOption();    // 添加帮助命令
-    cmdParser.addVersionOption(); // 添加版本选择命令
-    // 定义一个命令
-    QCommandLineOption optKey("k"); // src file
+    cmdParser.setApplicationDescription( "list keyword from Keil-MDKv5 project or source file");
+    cmdParser.addHelpOption();
+    cmdParser.addVersionOption();
+    // 定义关键字命令
+    QCommandLineOption optKey("k");
     optKey.setValueName( "keyword" );   // 值名,设置ValueName后,解析器会认为此命令带值,可以根据名字索引值,强调必须带值
     optKey.setDescription("specific keyword to be scan"); // 命令选项描述
     cmdParser.addOption( optKey );
     // 任何不带'-'或"--"的参数，都是PositionalArgument,
-    cmdParser.addPositionalArgument("files", QCoreApplication::translate("files", "any files or mdk-arm project file"));
+    cmdParser.addPositionalArgument("files", QCoreApplication::translate("files", "any files or Keil-MDKv5 project file"));
 
     // 解析应用进程的参数
     if( argc == 1 ) {
