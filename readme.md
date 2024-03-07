@@ -63,5 +63,5 @@ keyword - fixed
 
 在任意文件都可以使用自定义的关键字,而且关键字是可以是中文(只支持GB2312/utf8编码的文件)
 
-![image-20240307095710673](readme.zh_CN.assets/image-20240307095710673.png)
+![image-20240307095710673](readme.assets/image-20240307095710673.png)
 
