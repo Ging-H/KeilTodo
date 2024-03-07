@@ -1,4 +1,4 @@
-[中文](readme.zh_CN.md)
+[中文](readme.md)
 
 ## Build 
 
