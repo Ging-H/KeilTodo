@@ -1,9 +1,9 @@
-#include <QCoreApplication>
+﻿#include <QCoreApplication>
 #include <QCommandLineParser>
 #include <QtXml>
 #include <QTextCodec>
 
-QString defKey = "@warning|@todo|@fixme|@fixed|@info|@bug";
+QString defKey = "\\s@warning|\\s@todo|\\s@fixme|\\s@fixed|\\s@info|\\s@bug";
 
 /**
   * 函数功能: 将文本数据转换成unicode
@@ -118,41 +118,53 @@ QStringList scanFile(QString &path, QString &key)
     QStringList msgLst;
 
     if( file->open( QIODevice::ReadOnly) ) {
-        qint32 linenum = 0;
+        qint32 line = 0;
 
         while( !file->atEnd() ) {
             QByteArray data = file->readLine();
             QString txt = unicodeText(data); // GB2312, UTF-8 to unicode
-            linenum++;
+            line++;
+
+            QRegularExpression regexp(key);
+            regexp.setPatternOptions( QRegularExpression::CaseInsensitiveOption );
+
+            /* 每行检测多个关键字 */
             QRegExp reg(key);
             reg.setCaseSensitivity( Qt::CaseInsensitive );
-
-            if( reg.indexIn(txt, 0) != -1 ) {
-                QString type = reg.cap(0).mid(1); // remove the first '@'
-                QString location = path + "(" + QString::number(linenum) + ")";
+            qint32 pos = 0;
+            while( (pos = reg.indexIn(txt, pos)) != -1 ){
+                QString type = reg.cap(0).mid(2); // remove the first '@'
+                QString file = path + "(" + QString::number(line) + ")";
                 QString log("%1: [%2] %3");
-                msgLst << log.arg( location, type, txt );
+                msgLst << log.arg( file, type, txt );
+                pos += reg.matchedLength();
             }
+//            /* 每行只检测一个关键字 */
+//            QRegExp reg(key);
+//            reg.setCaseSensitivity( Qt::CaseInsensitive );
+//            if( reg.indexIn(txt, 0) != -1 ) {
+//                QString type = reg.cap(0).mid(2); // remove the first '@'
+//                QString location = path + "(" + QString::number(line) + ")";
+//                QString log("%1: [%2] %3");
+//                msgLst << log.arg( location, type, txt );
+//            }
         }
-
         file->close();
     }
-
     delete file;
     return msgLst;
 }
-
 
 /**
   * 函数功能:
   * 输入参数:
   * 返 回 值:
-  * 说    明:
+  * 说    明: 输入关键字: "-k=info"  标记关键字 "@info\s"(\s为空格)
   */
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
-    a.setApplicationVersion("1.1"); // 版本号
+    a.setApplicationVersion("1.2"); // 版本号
     a.setApplicationName("KeilTodo");
     QCommandLineParser cmdParser;
     // 定义实例
@@ -164,8 +176,13 @@ int main(int argc, char *argv[])
     optKey.setValueName( "keyword" );   // 值名,设置ValueName后,解析器会认为此命令带值,可以根据名字索引值,强调必须带值
     optKey.setDescription("specific keyword to be scan"); // 命令选项描述
     cmdParser.addOption( optKey );
+
+    QCommandLineOption optLst("l");  // 命令选项
+    optLst.setDescription("list all keyword in file"); // 命令选项描述
+    cmdParser.addOption( optLst );
+
     // 任何不带'-'或"--"的参数，都是PositionalArgument,
-    cmdParser.addPositionalArgument("files", QCoreApplication::translate("files", "any files or Keil-MDKv5 project file"));
+    cmdParser.addPositionalArgument("files", QCoreApplication::translate("files", "Any number of text-files or Keil-MDKv5 project file"));
 
     // 解析应用进程的参数
     if( argc == 1 ) {
@@ -174,23 +191,40 @@ int main(int argc, char *argv[])
     }
 
     cmdParser.process( a );
-    QString key = defKey; // 使用默认的关键字
-
-    // 扫描特定关键字
-    if( cmdParser.isSet( optKey ) ) {
+    QString key;
+    // 扫描所有关键字
+    if( cmdParser.isSet( optLst ) ) {
         key.clear();
-        QStringList keyLst = cmdParser.values(optKey);
-        foreach( QString k, keyLst ) {
-            if( !key.isEmpty() ) {
-                key.append("|");
+        key.append("\\s@[\\S]+");
+        qDebug().noquote().nospace() << key;
+    }else{
+        if( cmdParser.isSet( optKey ) ) {
+            // 扫描特定关键字
+            QStringList keyLst;
+            QString str;
+            keyLst = cmdParser.values(optKey);
+            foreach( QString k, keyLst ) {
+                str.append(k).append(' ');
+                k.prepend("\\s@").append('|');
+                key.append(k);
+            }
+            if(key.endsWith('|')){
+                key.chop(1);
             }
 
-            k.prepend("@");
-            key.append(k);
+            qDebug().noquote().nospace() << "keyword - "<<str;
+        }else{
+            // 扫描默认关键字
+            key = defKey;
+            QStringList keyLst = key.split('|');
+            QString str;
+            foreach( QString k, keyLst ) {
+                k.remove("\\s@").append(' ');
+                str.append(k);
+            }
+            qDebug().noquote().nospace() << "keyword - "<<str;
         }
-        qDebug()<<key;
     }
-
     // keil工程文件或者是其他文件
     QStringList files;
     files = cmdParser.positionalArguments();
@@ -198,13 +232,6 @@ int main(int argc, char *argv[])
         QFileInfo info(file);
 
         if( info.isFile() ) {
-            QString str;
-            QStringList kLst = key.split("|");
-            foreach( auto key, kLst) {
-                str.append( key.mid(1) ).append(" ");
-            }
-            qDebug().noquote().nospace() << "keyword - "<<str;
-
             // keil工程文件
             if(info.suffix() == "uvprojx") {
                 QStringList filePathList = getFileList(file);
