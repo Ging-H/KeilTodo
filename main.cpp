@@ -136,8 +136,13 @@ QStringList scanFile(QString &path, QString &key)
                 QString type = reg.cap(0).mid(2); // remove the first '@'
                 QString file = path + "(" + QString::number(line) + ")";
                 QString log("%1: [%2] %3");
-                msgLst << log.arg( file, type, txt );
-                pos += reg.matchedLength();
+                if( type == "{" || type == "}" ){
+                    pos += reg.matchedLength();
+                    continue;
+                }else{
+                    msgLst << log.arg( file, type, txt );
+                    pos += reg.matchedLength();
+                }
             }
 //            /* 每行只检测一个关键字 */
 //            QRegExp reg(key);
@@ -166,23 +171,28 @@ int main(int argc, char *argv[])
     QCoreApplication a(argc, argv);
     a.setApplicationVersion("1.2"); // 版本号
     a.setApplicationName("KeilTodo");
+
+    /* 命令解析器,用于提示使用方法 */
     QCommandLineParser cmdParser;
-    // 定义实例
     cmdParser.setApplicationDescription( "list keyword from Keil-MDKv5 project or source file");
-    cmdParser.addHelpOption();
-    cmdParser.addVersionOption();
-    // 定义关键字命令
-    QCommandLineOption optKey("k");
-    optKey.setValueName( "keyword" );   // 值名,设置ValueName后,解析器会认为此命令带值,可以根据名字索引值,强调必须带值
+    cmdParser.addHelpOption();    // 添加-h选项
+    cmdParser.addVersionOption(); // 添加-v选项
+    // 自定义命令
+    QCommandLineOption optKey("k");     // 添加-k选项,关键字
+    optKey.setValueName( "keyword" );   // -k值名,设置ValueName后,解析器会认为此命令带值,可以根据名字索引值,强调必须带值
     optKey.setDescription("specific keyword to be scan"); // 命令选项描述
     cmdParser.addOption( optKey );
 
-    QCommandLineOption optLst("l");  // 命令选项
-    optLst.setDescription("list all keyword in file"); // 命令选项描述
+    QCommandLineOption optLst("l");     // -l,列出/列表
+    optLst.setDescription("list all keyword in file");
     cmdParser.addOption( optLst );
 
+    QCommandLineOption optHal("d");     // -h,包含hal库
+    optHal.setDescription("search hal/ll drivers");
+    cmdParser.addOption( optHal );
+
     // 任何不带'-'或"--"的参数，都是PositionalArgument,
-    cmdParser.addPositionalArgument("files", QCoreApplication::translate("files", "Any number of text-files or Keil-MDKv5 project file"));
+    cmdParser.addPositionalArgument("files", QCoreApplication::translate("files", "Any number of text-files or one Keil-MDKv5 project file"));
 
     // 解析应用进程的参数
     if( argc == 1 ) {
@@ -225,6 +235,12 @@ int main(int argc, char *argv[])
             qDebug().noquote().nospace() << "keyword - "<<str;
         }
     }
+
+    bool isSearchDriver = false;
+    if( cmdParser.isSet(optHal) ){
+        isSearchDriver = true;
+    }
+
     // keil工程文件或者是其他文件
     QStringList files;
     files = cmdParser.positionalArguments();
@@ -236,6 +252,14 @@ int main(int argc, char *argv[])
             if(info.suffix() == "uvprojx") {
                 QStringList filePathList = getFileList(file);
                 foreach( QString filepath, filePathList ) {
+
+                    // 跳过hal/ll驱动库文件
+                    if( !isSearchDriver ){
+                        if( filepath.contains(QRegExp("/Drivers/.*\\.[ch]")) ){
+                            continue;
+                        }
+                    }
+
                     QStringList msgLst;
                     msgLst << scanFile(filepath, key);
                     foreach (QString msg, msgLst) {

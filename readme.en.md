@@ -1,6 +1,6 @@
 [中文](readme.md)
 
-## Build 
+## Build Env
 
 * Qt5.9 or later
 * msvc2015 32-bit(64bit) or later/MinGW5.3 32bit(64bit) or later
@@ -9,16 +9,18 @@
 ## Usage
 
 ```shell
-Usage: keiltodo [options] files
+Usage: Keiltodo [options] files
 list keyword from Keil-MDKv5 project or source file
 
 Options:
   -?, -h, --help  Displays this help.
   -v, --version   Displays version information.
   -k <keyword>    specific keyword to be scan
+  -l              list all keyword in file
+  -d              search hal/ll drivers
 
 Arguments:
-  files           any files or Keil-MDKv5 project file
+  files           Any number of text-files or one Keil-MDKv5 project file
 ```
 
 #### Usage in cmd
@@ -41,6 +43,8 @@ main.cpp(11): [fixed]  * @fixed    line11
 main.cpp(16): [todo]  * @todo:    line10
 
 main.cpp(17): [warning]  * @warning: line11
+
+main.cpp(18): [bug] // @bug @ver1.5.1 @bugfix can use multi-keyword in one line
 ```
 
 * use specific keyword
@@ -63,6 +67,12 @@ keyword - fixed
 
 ![image-20240222194325838](readme.assets/image-20240222194325838.png)
 
-* add `'@'` in front of keywords,will be displayed at `Build Output windows`,double-click to jump to the line.
+​	the line of the keyword will be displayed at `Build Output windows`,double-click to jump to the line.
 
 ![image-20240307093731087](readme.assets/image-20240307093731087.png)
+
+
+
+#### Add keywords
+
+use `@+"Keyword"`to be searched by the software, and multiple keywords can be added to a row, but be careful to have at least one space between the keyword or context to distinguish and identify.
